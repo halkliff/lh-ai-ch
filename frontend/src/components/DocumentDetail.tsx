@@ -1,44 +1,56 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { getDocument, deleteDocument } from '../api'
+import { getDocument, deleteDocument } from '../api.ts'
+import { useFetch } from '../hooks/useFetch.tsx'
+import { useMutate } from '../hooks/useMutate.tsx'
 
 function DocumentDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [document, setDocument] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchDocument = useCallback(async () => getDocument(id!), [id])
+
+  const {
+    data: document,
+    loading,
+    error: loadDocumentError,
+    refetch,
+  } = useFetch(fetchDocument)
+
+  const { mutate: deleteDoc, reset } = useMutate({
+    mutator: async (id: string) => deleteDocument(id),
+    onSuccess: () => navigate('/'),
+    onError: () => setError('Failed to delete document'),
+  })
 
   useEffect(() => {
-    loadDocument()
-  }, [id])
-
-  async function loadDocument() {
-    try {
-      setLoading(true)
-      const data = await getDocument(id)
-      setDocument(data)
-    } catch (err) {
+    if (loadDocumentError) {
       setError('Failed to load document')
-    } finally {
-      setLoading(false)
     }
-  }
+  }, [loadDocumentError])
 
   async function handleDelete() {
     if (!confirm('Are you sure you want to delete this document?')) {
       return
     }
-    try {
-      await deleteDocument(id)
-      navigate('/')
-    } catch (err) {
-      setError('Failed to delete document')
-    }
+
+    if (error) setError(null)
+
+    reset()
+    await deleteDoc(id!)
   }
 
   if (loading) {
-    return <div className="loading">Loading document...</div>
+    return (
+      <div
+        className="loading"
+        onClick={() => refetch()}
+      >
+        Loading document...
+      </div>
+    )
   }
 
   if (error) {
@@ -63,10 +75,16 @@ function DocumentDetail() {
         {document.content || 'No content extracted'}
       </div>
       <div className="actions">
-        <button className="back-btn" onClick={() => navigate('/')}>
+        <button
+          className="back-btn"
+          onClick={() => navigate('/')}
+        >
           Back to List
         </button>
-        <button className="delete-btn" onClick={handleDelete}>
+        <button
+          className="delete-btn"
+          onClick={handleDelete}
+        >
           Delete Document
         </button>
       </div>
@@ -74,7 +92,7 @@ function DocumentDetail() {
   )
 }
 
-function formatFileSize(bytes) {
+function formatFileSize(bytes: number) {
   if (!bytes) return 'Unknown size'
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'

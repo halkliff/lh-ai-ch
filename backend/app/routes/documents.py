@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from typing_extensions import TypedDict
 
 from fastapi import APIRouter, Depends, UploadFile, HTTPException
 from sqlalchemy import select
@@ -7,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Document, ProcessingStatus
-from app.schemas import DocumentResponse, DocumentDetail
+from app.schemas import DocumentResponse, DocumentDetail, UploadFileResponse
 from app.services.pdf_processor import extract_text_from_pdf
 from app.config import settings
 
@@ -15,7 +16,12 @@ router = APIRouter()
 
 
 @router.post("/documents")
-async def upload_document(file: UploadFile, db: AsyncSession = Depends(get_db)):
+async def upload_document(
+    file: UploadFile, db: AsyncSession = Depends(get_db)
+) -> UploadFileResponse:
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     file_path = os.path.join(settings.UPLOAD_DIR, file.filename)
 
@@ -44,11 +50,11 @@ async def upload_document(file: UploadFile, db: AsyncSession = Depends(get_db)):
     db.add(processing_status)
     await db.commit()
 
-    return {"id": document.id, "filename": document.filename}
+    return UploadFileResponse(id=document.id, filename=document.filename)
 
 
 @router.get("/documents")
-async def list_documents(db: AsyncSession = Depends(get_db)):
+async def list_documents(db: AsyncSession = Depends(get_db)) -> list[DocumentResponse]:
     result = await db.execute(select(Document))
     documents = result.scalars().all()
 
@@ -73,7 +79,9 @@ async def list_documents(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/documents/{document_id}")
-async def get_document(document_id: int, db: AsyncSession = Depends(get_db)):
+async def get_document(
+    document_id: int, db: AsyncSession = Depends(get_db)
+) -> DocumentDetail:
     result = await db.execute(select(Document).where(Document.id == document_id))
     document = result.scalar_one_or_none()
 
@@ -96,8 +104,13 @@ async def get_document(document_id: int, db: AsyncSession = Depends(get_db)):
     )
 
 
+DeleteResponse = TypedDict("DeleteResponse", {"message": str})
+
+
 @router.delete("/documents/{document_id}")
-async def delete_document(document_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_document(
+    document_id: int, db: AsyncSession = Depends(get_db)
+) -> DeleteResponse:
     result = await db.execute(select(Document).where(Document.id == document_id))
     document = result.scalar_one_or_none()
 

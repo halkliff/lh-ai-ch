@@ -1,10 +1,11 @@
 import { Routes, Route, Link } from 'react-router-dom'
-import DocumentList from './components/DocumentList'
-import DocumentDetail from './components/DocumentDetail'
-import UploadForm from './components/UploadForm'
-import SearchBar from './components/SearchBar'
+import DocumentList from './components/DocumentList.tsx'
+import DocumentDetail from './components/DocumentDetail.tsx'
+import UploadForm from './components/UploadForm.tsx'
+import SearchBar from './components/SearchBar.tsx'
 
 function App() {
+  console.debug('App: render')
   return (
     <div className="app">
       <header className="header">

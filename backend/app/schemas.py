@@ -6,6 +6,9 @@ from typing import Optional
 class DocumentBase(BaseModel):
     filename: str
 
+class UploadFileResponse(DocumentBase):
+    id: int
+
 
 class DocumentCreate(DocumentBase):
     pass

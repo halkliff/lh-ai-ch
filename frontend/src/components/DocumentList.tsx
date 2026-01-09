@@ -1,34 +1,17 @@
-import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getDocuments } from '../api'
+import { useFetch } from '../hooks/useFetch'
 
 function DocumentList() {
-  const [documents, setDocuments] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
 
-  useEffect(() => {
-    loadDocuments()
-  }, [])
-
-  async function loadDocuments() {
-    try {
-      setLoading(true)
-      const data = await getDocuments()
-      setDocuments(data)
-    } catch (err) {
-      setError('Failed to load documents')
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: documents, loading, error, refetch } = useFetch(getDocuments)
 
   if (loading) {
     return <div className="loading">Loading documents...</div>
   }
 
   if (error) {
-    return <div className="error">{error}</div>
+    return <div className="error" onClick={() => refetch()}>Failed to load documents</div>
   }
 
   return (
@@ -57,7 +40,7 @@ function DocumentList() {
   )
 }
 
-function formatFileSize(bytes) {
+function formatFileSize(bytes: number) {
   if (!bytes) return 'Unknown size'
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
